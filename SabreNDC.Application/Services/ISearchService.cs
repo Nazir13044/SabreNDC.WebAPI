@@ -1,7 +1,9 @@
-﻿namespace SabreNDC.Application.Services
+﻿using TripLover.AirCommonModels;
+
+namespace SabreNDC.Application.Services
 {
     public interface ISearchService
     {
-        Task<string> Search(string searchText);
+        Task<string> Search(ACMSearchReq searchRequest);
     }
 }

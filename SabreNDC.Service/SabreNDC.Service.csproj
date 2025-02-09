@@ -10,4 +10,10 @@
     <ProjectReference Include="..\SabreNDC.Application\SabreNDC.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="TripLover.AirCommonModels">
+      <HintPath>..\SabreNDC.Application\libs\TripLover.AirCommonModels.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

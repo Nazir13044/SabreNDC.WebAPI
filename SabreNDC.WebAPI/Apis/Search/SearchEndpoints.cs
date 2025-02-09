@@ -1,4 +1,5 @@
 ﻿using SabreNDC.Application.Services;
+using TripLover.AirCommonModels;
 
 namespace SabreNDC.WebAPI.Apis.Search
 {
@@ -6,9 +7,9 @@ namespace SabreNDC.WebAPI.Apis.Search
     {
         public static void SearchEndpoint(this IEndpointRouteBuilder routes)
         {
-            routes.MapPost("api/search", async (ISearchService _searchService) =>
+            routes.MapPost("api/search", async (ISearchService _searchService, ACMSearchReq searchRequest) =>
             {
-                return Results.Ok(new { Message = await _searchService.Search("testing") });
+                return Results.Ok(new { Message = await _searchService.Search(searchRequest) });
             })
             .WithGroupName("Search");
         }
