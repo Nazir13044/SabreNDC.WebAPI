@@ -1,4 +1,7 @@
-﻿using SabreNDC.Application.Dtos;
+﻿using Newtonsoft.Json;
+using SabreNDC.Application.Dtos;
+using SabreNDC.Application.Dtos.HelperModels;
+using SabreNDC.Application.Helper;
 using SabreNDC.Application.Services;
 using System.Numerics;
 using TripLover.AirCommonModels;
@@ -7,18 +10,59 @@ namespace SabreNDC.Service.Services
 {
     public class SearchService : ISearchService
     {
-        public async Task<string> Search(ACMSearchReq searchRequest)
+        public async Task<BFMResponse> Search(ACMSearchReq searchRequest)
         {
-            //Making SabreNDC Request
-            #region NDC Request
+            try
+            {
+                //Making SabreNDC Request
+                #region NDC Request
 
-            BFMRequest bFMRequest = new BFMRequest();
-            bFMRequest = await ACMSearchReqToBFMRequest(searchRequest);
+                BFMRequest bFMRequest = new BFMRequest();
+                bFMRequest = await ACMSearchReqToBFMRequest(searchRequest);
 
-            #endregion
+                #endregion
 
+                #region Token Generation
+                string bfmResponseJson = string.Empty;
+                string access_token = await ApiAccessHelper.GetAccessToken(searchRequest.ApiCredential, searchRequest.UniqueTransID);
+                #endregion
 
-            return await Task.FromResult("searchText");
+                #region response generation
+                var logFolder = "Search";
+                if (!string.IsNullOrEmpty(access_token))
+                {
+                    BFMResponse bfmResponse = new BFMResponse();
+
+                    try
+                    {
+
+                        FileHelper.ToWriteJson($"Search-{searchRequest.UniqueTransID}-Req", logFolder, JsonConvert.SerializeObject(bFMRequest));
+                        bfmResponseJson = await ApiAccessHelper.SabrePostRequest<BFMRequest>(bFMRequest, access_token, searchRequest.ApiCredential.ServiceUrl, "v4/offers/shop");
+                        bfmResponse = JsonConvert.DeserializeObject<BFMResponse>(bfmResponseJson);
+
+                        if (bfmResponse != null && bfmResponse.groupedItineraryResponse != null && bfmResponse.groupedItineraryResponse.statistics.itineraryCount > 0)
+                            FileHelper.ToWriteJson($"Search-{searchRequest.UniqueTransID}-Rsp", logFolder, bfmResponseJson);
+                        else
+                        {
+                            FileHelper.ToWriteJson($"Search-{searchRequest.UniqueTransID}-Err", logFolder, bfmResponseJson);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        FileHelper.ToWriteJson($"Search-{searchRequest.UniqueTransID}-Err", logFolder, JsonConvert.SerializeObject(ex));
+                    }
+                    return bfmResponse;
+                }
+                else
+                {
+                    throw new Exception("Invalid access token");
+                }
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.InnerException != null ? ex.InnerException.Message : ex.Message);
+            }
         }
         private async Task<BFMRequest> ACMSearchReqToBFMRequest(ACMSearchReq searchRequest)
         {
@@ -100,18 +144,18 @@ namespace SabreNDC.Service.Services
                 TravelPreferences travelPreferences = new TravelPreferences()
                 {
                     CabinPref = new List<CabinPref>()
-                {
-                    new CabinPref()
                     {
-                        Cabin = cabinClass,
-                        PreferLevel = searchRequest.CabinClass.ToLower().Equals("all") ? "Preferred" : "Only",  //[Only, Unacceptable, Preferred]
-                    }
-                },
+                        new CabinPref()
+                        {
+                            Cabin = cabinClass,
+                            PreferLevel = searchRequest.CabinClass.ToLower().Equals("all") ? "Preferred" : "Only",  //[Only, Unacceptable, Preferred]
+                        }
+                    },
                     TPA_Extensions = new TPAExtensions()
                     {
                         NumTrips = new NumTrips()
                         {
-                            //Number = 10,
+                            Number = 10,
                         },
                         DataSources = new DataSources()
                         {
@@ -228,13 +272,13 @@ namespace SabreNDC.Service.Services
                         OriginDestinationInformation = new List<OriginDestinationInformation>(OriginDestinationInformations),
                         TravelPreferences = travelPreferences,
                         TravelerInfoSummary = travelerInfoSummary,
-                        TPA_Extensions = new TPAExtensions()
+                        TPA_Extensions = new TPAExtensionsV2()
                         {
                             IntelliSellTransaction = new IntelliSellTransaction()
                             {
                                 RequestType = new RequestType()
                                 {
-                                    Name = searchRequest.ApiCredential.PCC
+                                    Name = searchRequest?.ApiCredential?.TargetBranch
                                 }
                             }
                         }
@@ -248,10 +292,7 @@ namespace SabreNDC.Service.Services
             {
 
             }
-            finally
-            {
-
-            }
+            
             return bFMRequest;
         }
     }

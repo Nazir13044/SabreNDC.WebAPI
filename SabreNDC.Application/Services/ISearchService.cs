@@ -1,9 +1,10 @@
-﻿using TripLover.AirCommonModels;
+﻿using SabreNDC.Application.Dtos;
+using TripLover.AirCommonModels;
 
 namespace SabreNDC.Application.Services
 {
     public interface ISearchService
     {
-        Task<string> Search(ACMSearchReq searchRequest);
+        Task<BFMResponse> Search(ACMSearchReq searchRequest);
     }
 }
